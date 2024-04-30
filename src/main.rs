@@ -245,12 +245,21 @@ impl Sandbox for BankApp {
                     }
 
                     BankMessage::TransferByPhone => {
-                        BankState.transfer_by_phone(
+                        let tx = BankState.transfer_by_phone(
                             TransferPageState.sender_card_input.clone(),
                             TransferPageState.recipient_phone_input.clone(),
                             TransferPageState.amount_input.clone()
-                            );
-                            TransferPageState.reset_inputs()
+                        );
+                        TransferPageState.reset_inputs()
+                    }
+
+                    BankMessage::TransferByCard => {
+                        let tx = BankState.transfer_by_card(
+                            TransferPageState.sender_card_input.clone(),
+                            TransferPageState.recipient_card_input.clone(),
+                            TransferPageState.amount_input.clone()
+                        );
+                        TransferPageState.reset_inputs()
                     }
 
                     BankMessage::ToUserPage => {

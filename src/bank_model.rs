@@ -7,6 +7,7 @@ use crate::errors::BankErrors;
 pub struct BankState {
     pub name: String,
     users: HashMap<u32, User>,
+    transactions: Vec<Transaction>,
 
     //Fields for user's input
     pub input_fio: String,
@@ -20,6 +21,7 @@ impl BankState {
         Self {
             name: bank_name,
             users: HashMap::new(),
+            transactions: Vec::new(),
             input_fio: String::new(),
             input_phone: String::new(),
             input_money: String::new(),
@@ -61,7 +63,6 @@ impl BankState {
             card_number: new_card_number,
             phone_number,
             money_amount: correct_amount,
-            transactions: Vec::new()
         };
 
         self.users.insert(new_card_number, new_user);
@@ -76,11 +77,12 @@ impl BankState {
         }
     }
 
-    pub fn transfer_by_phone(&mut self, sender_card: String, recipient_phone: String, amount: String) {
+    pub fn transfer_by_phone(&mut self, sender_card: String, recipient_phone: String, amount: String) -> Transaction {
 
         let correct_amount = convert_amount(amount);
+        let converted_sen_card = convert_card_num(sender_card);
         {
-            match self.users.get_mut(&convert_card_num(sender_card.clone())) {
+            match self.users.get_mut(&converted_sen_card) {
                 Some(user) => {
                     if user.is_enough_money(correct_amount) { user.refuse_money(correct_amount) } else { panic!("Not enough money for transfer!") }
                 },
@@ -88,19 +90,40 @@ impl BankState {
             }
         }
 
-        for user in self.users.values_mut() {
-            if user.phone_number == recipient_phone {
+        match self.users.values_mut().find(|user| user.phone_number == recipient_phone) {
+            Some(user) => {
                 user.receive_money(correct_amount);
-                return
-            }
-        };
-
-        panic!("Recipient was not found!");
+                return Transaction::new(correct_amount, converted_sen_card, recipient_phone.parse::<u32>().unwrap())
+            },
+            None => panic!("Recipient was not found!")
+        }
 
     }
 
-    pub fn transfer_by_card(&mut self, sender_card: String, recipient_card: String, amount: String) {
+    pub fn transfer_by_card(&mut self, sender_card: String, recipient_card: String, amount: String) -> Transaction {
 
+        let correct_amount = convert_amount(amount);
+        let converted_sen_card = convert_card_num(sender_card);
+
+        {
+            match self.users.get_mut(&converted_sen_card) {
+                Some(user) => {
+                    if user.is_enough_money(correct_amount) { user.refuse_money(correct_amount) } else { panic!("Not enough money for transfer!") }
+                },
+                None => panic!("Sender was not found!")
+            }
+        }
+
+        let converted_rec_card = convert_card_num(recipient_card);
+
+
+        match self.users.get_mut(&converted_rec_card) {
+            Some(user) => {
+                user.receive_money(correct_amount);
+                return Transaction::new(correct_amount, converted_sen_card, converted_rec_card)
+            },
+            None => panic!("Recipient was not found!")
+        }
     }
 }
 
@@ -110,7 +133,6 @@ pub struct User {
     card_number: u32,
     phone_number: String,
     money_amount: usize,
-    transactions: Vec<Transaction>
 }
 impl User {
 
@@ -129,52 +151,28 @@ impl BankUser for User {
     fn is_enough_money(&self, amount: usize) -> bool {
         if self.money_amount >= amount {true} else {false}
     }
-    fn check_transactions(&self) -> &Vec<Transaction> {
-        &self.transactions
-    }
     fn receive_money(&mut self, amount: usize) {
         self.money_amount += amount;
     }
     fn refuse_money(&mut self, amount: usize) {
         self.money_amount -= amount;
     }
-
-    fn transfer_by_card(&mut self, bank: &mut BankState, card_number: String, amount: String) {
-        let correct_card = match card_number.parse::<u32>() {
-            Ok(card) => card,
-            Err(error) => panic!("Incorrect card_number")
-        };
-
-        if let Some(needed_user) = bank.users.get_mut(&correct_card) {
-            let correct_amount = convert_amount(amount);
-            if self.is_enough_money(correct_amount) {()} else {panic!("Not enough money for transfer!")}
-
-            needed_user.receive_money(correct_amount);
-            self.refuse_money(correct_amount);
-
-            let tx = Transaction::new(correct_amount, self.card_number, correct_card);
-            self.transactions.push(tx);
-            needed_user.transactions.push(tx)
-        } else {
-            panic!("User wasn't found!")
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
-struct Transaction {
+pub struct Transaction {
     time_of_creation: DateTime<Utc>,
     amount: usize,
     sender_card: u32,
-    receiver_card: u32
+    recipient: u32
 }
 impl Transaction {
-    fn new(amount: usize, sender: u32, receiver: u32) -> Self {
+    fn new(amount: usize, sender: u32, recipient: u32) -> Self {
         Self {
             time_of_creation: Utc::now(),
             amount,
             sender_card: sender,
-            receiver_card: receiver
+            recipient
         }
     }
 }
@@ -201,14 +199,12 @@ fn convert_card_num(card_num: String) -> u32 {
 
 pub trait BankUser {
     fn check_fio(&self) -> &str;
-
     fn check_phone(&self) -> &str;
     fn check_card_number(&self) -> u32;
     fn check_balance(&self) -> usize;
     fn is_enough_money(&self, amount: usize) -> bool;
-    fn check_transactions(&self) -> &Vec<Transaction>;
     fn receive_money(&mut self, amount: usize);
     fn refuse_money(&mut self, amount: usize);
-    fn transfer_by_card(&mut self, bank: &mut BankState, card_number: String, amount: String);
+
 }
 
