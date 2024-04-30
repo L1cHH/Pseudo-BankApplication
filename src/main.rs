@@ -1,6 +1,6 @@
 use std::fmt::format;
 //Model
-use crate::bank_model::{BankState, BankUser, User};
+use crate::bank_model::{BankState, BankUser, User, Transaction};
 //Styles
 use crate::styles::{ContainerStyle};
 mod bank_model;
@@ -250,6 +250,7 @@ impl Sandbox for BankApp {
                             TransferPageState.recipient_phone_input.clone(),
                             TransferPageState.amount_input.clone()
                         );
+                        BankState.add_transaction(tx);
                         TransferPageState.reset_inputs()
                     }
 
@@ -259,6 +260,7 @@ impl Sandbox for BankApp {
                             TransferPageState.recipient_card_input.clone(),
                             TransferPageState.amount_input.clone()
                         );
+                        BankState.add_transaction(tx);
                         TransferPageState.reset_inputs()
                     }
 
@@ -412,6 +414,9 @@ impl Sandbox for BankApp {
             }
 
             BankApp::TransferPage(Bank, TransferPageState) => {
+
+                let transactions = Bank.get_transactions();
+
                 let intro_text = text("Welcome to Transfers")
                     .size(50)
                     .width(Length::Fill)
@@ -463,6 +468,16 @@ impl Sandbox for BankApp {
                     row![to_user_page_btn, transfer_by_card_btn].spacing(5)
                 ].spacing(20);
 
+                let tx_vec: Vec<Element<'_, BankMessage, Theme, Renderer>> = {
+                    transactions.iter().map(|tx| tx.view().into()).collect()
+                };
+
+                let tx_row = Row::from_vec(tx_vec).spacing(10);
+
+                let scrollbar = Scrollable::new(tx_row)
+                    .width(Length::Fill)
+                    .height(Length::Shrink)
+                    .direction(Direction::Horizontal(Properties::new()));
 
                 let container = container(
                     column![
@@ -480,6 +495,7 @@ impl Sandbox for BankApp {
                                 }
                             }
                         },
+                        scrollbar
 
                     ].spacing(10).align_items(Alignment::Center)
                 ).align_y(Vertical::Center).align_x(Horizontal::Center).into();
@@ -503,6 +519,24 @@ impl User {
         let text_balance = text(format!("Баланс: {balance}")).size(12);
 
         container(column![text_fio, text_phone, text_card_num, text_balance].align_items(Alignment::Start).spacing(10))
+            .center_y()
+            .width(150)
+            .height(120)
+            .style(iced::theme::Container::Custom(Box::new(ContainerStyle)))
+    }
+}
+impl Transaction {
+    fn view(&self) -> Container<'_, BankMessage, Theme, Renderer> {
+        let date = self.get_tx_time();
+        let amount = self.get_amount();
+        let sender = self.get_sender_card();
+        let recipient = self.get_recipient();
+
+        let text_date = text(format!("Дата: {date}")).size(12);
+        let text_amount = text(format!("Сумма: {amount}")).size(12);
+        let text_sender = text(format!("Отправитель: {sender}")).size(12);
+        let text_recipient = text(format!("Получатель: {recipient}")).size(12);
+        container(column![text_date, text_amount, text_sender, text_recipient].align_items(Alignment::Start).spacing(10))
             .center_y()
             .width(150)
             .height(120)

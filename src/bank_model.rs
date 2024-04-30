@@ -125,6 +125,14 @@ impl BankState {
             None => panic!("Recipient was not found!")
         }
     }
+
+    pub fn add_transaction(&mut self, tx: Transaction) {
+        self.transactions.push(tx)
+    }
+
+    pub fn get_transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -174,6 +182,18 @@ impl Transaction {
             sender_card: sender,
             recipient
         }
+    }
+    pub fn get_tx_time(&self) -> DateTime<Utc> {
+        self.time_of_creation
+    }
+    pub fn get_amount(&self) -> usize {
+        self.amount
+    }
+    pub fn get_sender_card(&self) -> u32 {
+        self.sender_card
+    }
+    pub fn get_recipient(&self) -> u32 {
+        self.recipient
     }
 }
 
