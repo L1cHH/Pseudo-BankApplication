@@ -93,7 +93,7 @@ impl BankState {
         match self.users.values_mut().find(|user| user.phone_number == recipient_phone) {
             Some(user) => {
                 user.receive_money(correct_amount);
-                return Transaction::new(correct_amount, converted_sen_card, recipient_phone.parse::<u32>().unwrap())
+                return Transaction::new(correct_amount, converted_sen_card, recipient_phone.parse::<usize>().unwrap())
             },
             None => panic!("Recipient was not found!")
         }
@@ -120,7 +120,7 @@ impl BankState {
         match self.users.get_mut(&converted_rec_card) {
             Some(user) => {
                 user.receive_money(correct_amount);
-                return Transaction::new(correct_amount, converted_sen_card, converted_rec_card)
+                return Transaction::new(correct_amount, converted_sen_card, converted_rec_card as usize)
             },
             None => panic!("Recipient was not found!")
         }
@@ -172,10 +172,10 @@ pub struct Transaction {
     time_of_creation: DateTime<Utc>,
     amount: usize,
     sender_card: u32,
-    recipient: u32
+    recipient: usize
 }
 impl Transaction {
-    fn new(amount: usize, sender: u32, recipient: u32) -> Self {
+    fn new(amount: usize, sender: u32, recipient: usize) -> Self {
         Self {
             time_of_creation: Utc::now(),
             amount,
@@ -192,7 +192,7 @@ impl Transaction {
     pub fn get_sender_card(&self) -> u32 {
         self.sender_card
     }
-    pub fn get_recipient(&self) -> u32 {
+    pub fn get_recipient(&self) -> usize {
         self.recipient
     }
 }
